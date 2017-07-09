@@ -1,0 +1,11 @@
+{
+  "name": "hackmud-debug-framework",
+  "version": "1.0.0",
+  "description": "A node.js application to test hackmud scripts.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "UniverseSquared",
+  "license": "ISC"
+}
