@@ -1,6 +1,13 @@
 var fs = require("fs");
-if(!fs.existsSync("code.js")) {
+var a = process.argv;
+var file = "code.js";
+if(a.length > 2) {
+	a = a.slice(2);
+	file = a[0];
+}
+if(!fs.existsSync(file)) {
 	console.log("The script should be called 'code.js' in the same folder as 'app.js'.");
+	console.log("You can also specify a file to be interpreted as the first argument for the program.");
 	process.exit(1);
 }
 var balance = 1000;
@@ -16,13 +23,12 @@ var tran = [];
 var ch = ["0000"];
 var username = "universe";
 var breached = false;
+var retout = true;
 function getSeclevelName(i) {
 	return ["NULLSEC", "LOWSEC", "MIDSEC", "HIGHSEC", "FULLSEC"][i];
 }
 // Scripts the code will have access to.
-// TODO: make each script an object with '_seclevel' and 'call'
-// the script will show as the lowest seclevel from the scripts called.
-var scripts = {
+var _scripts = {
 	accts: {
 		balance: () => {
 			return balance;
@@ -88,7 +94,7 @@ var scripts = {
 	scripts: {
 		get_level: (o) => {
 			let a = o.name.split(".");
-			return seclevels[a[0]][a[1]];
+			return _seclevels[a[0]][a[1]];
 		},
 		get_access_level: () => {
 			return {public:true, private:false, trust:true};
@@ -109,7 +115,7 @@ var scripts = {
 }
 
 // The security levels for all the scripts
-var seclevels = {
+var _seclevels = {
 	accts: {
 		balance: 3,
 		xfer_gc_to: 2,
@@ -136,14 +142,79 @@ var seclevels = {
 		ensure_midsec: 2,
 		ensure_lowsec: 1,
 		ensure_nullsec: 0
+	},
+	scripts: {
+		get_level: 4,
+		get_access_level: 4
 	}
 }
+
+// The global object for scripts
+// Preserved when scripts run subscripts
+var _global = {}
+
+// The function for '#D'.
+// console.log's the input, and also disables output using 'return'
+function _dlog(m) {
+	console.log(m);
+	retout = false;
+}
+
 // Read the file and replace the main anonymous function with a function called 'main'.
-// Also replace '#s' (a script call) with 'scripts'
+var contents = fs.readFileSync(file).toString().replace("function", "function main");
+
+// Replace '#s.' (a script call) with 'scripts.'
 // e.g. #s.accts.balance(); -> scripts.accts.balance();
-var contents = fs.readFileSync("code.js").toString().replace("function", "function main").replace(/#s/g, "scripts");
+contents = contents.replace(/#s\./g, "_scripts.");
+
+// Replace '#D(' (debug output) with 'dlog('
+// '#D' disables return output.
+// e.g. #D("Test message"); -> dlog("Test message");
+contents = contents.replace(/#D\(/g, "_dlog(");
+
+// Replace '#G.' (global object) with '_global.'
+// e.g. #G.data = {}; -> _global.data = {};
+contents = contents.replace(/#G./g, "_global.")
+
+// Define the args and context objects
+// TODO: allow the user to change args
+var args = undefined;
+var context = {
+	caller: username,
+	is_script: false,
+	calling_script: null
+};
+
 // Evaluate the contents of the file to get access to the 'main' function of the script.
 eval(contents);
-// console.log the return of the main function. makes 'return' act as it does in hackmud.
-console.log(main());
- 
+
+try {
+	// Store the return output of the script.
+	var out = main(context, args);
+} catch(e) {
+	console.log("::TRUST COMMUNICATION:: " + e);
+	process.exit(0);
+}
+
+
+// Only console.log the output of the script if it does not use #D in it.
+if(retout) {
+	if(typeof out == "object") {
+		// If the output of the script is an object, get the 'ok' value of that
+		// and add 'Success' or 'Failure' to the output, depending on the value of 'ok'
+		let o = "";
+		if(out.ok == true) {
+			o += "Success\n";
+		} else {
+			o += "Failure\n";
+		}
+		if(typeof out.msg == "object") {
+			out.msg = JSON.stringify(out.msg);
+		}
+		o += out.msg;
+		console.log(o);
+	} else {
+		// If the output of the script isn't an object, just console.log the output.
+		console.log(out);
+	}
+}
