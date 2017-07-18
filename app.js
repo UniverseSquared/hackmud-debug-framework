@@ -1,6 +1,7 @@
 var fs = require("fs");
 var a = process.argv;
 var file = "code.js";
+var config = require("config.json");
 if(a.length > 2) {
 	a = a.slice(2);
 	file = a[0];
@@ -178,12 +179,8 @@ contents = contents.replace(/#G./g, "_global.")
 
 // Define the args and context objects
 // TODO: allow the user to change args
-var args = undefined;
-var context = {
-	caller: username,
-	is_script: false,
-	calling_script: null
-};
+var args = config.args || undefined;
+var context = config.context;
 
 // Evaluate the contents of the file to get access to the 'main' function of the script.
 eval(contents);
