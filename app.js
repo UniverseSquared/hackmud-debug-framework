@@ -181,6 +181,7 @@ contents = contents.replace(/#G./g, "_global.")
 // TODO: allow the user to change args
 var args = config.args || undefined;
 var context = config.context;
+context.caller = username;
 
 // Evaluate the contents of the file to get access to the 'main' function of the script.
 eval(contents);
