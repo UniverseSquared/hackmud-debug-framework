@@ -1,7 +1,7 @@
 var fs = require("fs");
 var a = process.argv;
 var file = "code.js";
-var config = require("config.json");
+var config = require("./config.json");
 if(a.length > 2) {
 	a = a.slice(2);
 	file = a[0];
